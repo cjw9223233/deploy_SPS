@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>車站端SPS新舊切換流程（正式用）— 操作手冊</title>
+<style>
+  :root{
+    --bg:#f4f5f3;
+    --panel:#ffffff;
+    --ink:#1c2530;
+    --muted:#5c6773;
+    --line:#dfe3e6;
+    --accent:#1c5d8c;
+    --accent-dark:#123f5e;
+    --accent-soft:#e8f1f8;
+    --warn-bg:#fff7e0;
+    --warn-border:#e0a828;
+    --warn-ink:#6e4e08;
+    --term-bg:#121820;
+    --term-ink:#dbe7ef;
+    --term-muted:#7c8fa0;
+    --radius:7px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.6;
+    padding-bottom:60px;
+  }
+  code, .mono{
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  a{color:var(--accent);}
+  .ver-badge{
+    display:inline-block; margin-left:8px; padding:2px 9px;
+    font-size:12px; font-weight:700; letter-spacing:.4px;
+    border-radius:99px; background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.35); color:#eaf4fb;
+    vertical-align:middle;
+  }
+
+  .ip-hint{
+    font-size:12px; color:var(--muted); margin-left:2px;
+  }
+  .ip-hint.ok{color:#2e7d55; font-weight:600;}
+  .ip-hint.bad{color:#b3492b; font-weight:600;}
+  .cmd-row code.subst, code.subst{
+    outline:1px dashed rgba(95,208,160,.55); outline-offset:2px; border-radius:3px;
+  }
+
+  /* ---------- 頂部固定列 ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:var(--accent-dark);
+    color:#fff;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  .header-top{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:12px 20px; flex-wrap:wrap;
+  }
+  .header-top h1{
+    font-size:16px; margin:0; font-weight:700; letter-spacing:.3px;
+  }
+  .header-top .sub{
+    font-size:12px; color:#bcd3e3; margin-top:2px;
+  }
+  .progress-wrap{
+    display:flex; align-items:center; gap:10px; font-size:12.5px; color:#dceaf3;
+  }
+  .progress-bar{
+    width:140px; height:8px; background:rgba(255,255,255,.18); border-radius:99px; overflow:hidden;
+  }
+  .progress-bar > i{
+    display:block; height:100%; width:0%; background:#5fd0a0; transition:width .25s ease;
+  }
+  #reset-btn{
+    background:transparent; border:1px solid rgba(255,255,255,.35); color:#fff;
+    border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;
+  }
+  #reset-btn:hover{background:rgba(255,255,255,.12);}
+  nav.quicknav{
+    display:flex; gap:4px; overflow-x:auto; padding:0 20px 10px;
+    scrollbar-width:thin;
+  }
+  nav.quicknav a{
+    flex-shrink:0; color:#dceaf3; text-decoration:none; font-size:12.5px;
+    padding:6px 10px; border-radius:99px; background:rgba(255,255,255,.08);
+    white-space:nowrap;
+  }
+  nav.quicknav a:hover{background:rgba(255,255,255,.18); color:#fff;}
+
+  /* ---------- 主內容 ---------- */
+  main{max-width:880px; margin:0 auto; padding:24px 18px 10px;}
+
+  .overview-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:24px;
+  }
+  .overview-card .fields{
+    display:flex; gap:24px; flex-wrap:wrap; margin-bottom:12px;
+  }
+  .field-line{display:flex; align-items:center; gap:6px; font-size:14px;}
+  .field-line input[type=text]{
+    border:none; border-bottom:1px solid var(--line); background:transparent;
+    font-size:14px; padding:2px 4px; width:160px; font-family:inherit;
+  }
+  .field-line input[type=text]:focus{outline:none; border-bottom-color:var(--accent);}
+  .kv{margin:4px 0; font-size:14px;}
+  .kv b{color:var(--accent-dark);}
+
+  .flow{
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:14px 0 4px;
+    font-size:13px;
+  }
+  .flow .node{
+    background:var(--accent-soft); color:var(--accent-dark); border:1px solid #c7dcec;
+    border-radius:99px; padding:6px 12px; font-weight:600;
+  }
+  .flow .arrow{color:var(--muted); font-weight:700;}
+
+  section.block{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:22px; scroll-margin-top:150px;
+  }
+  section.block > h2{
+    margin:0 0 4px; font-size:18px; color:var(--accent-dark);
+    border-bottom:2px solid var(--accent-soft); padding-bottom:10px;
+  }
+  section.block > .desc{color:var(--muted); font-size:13px; margin:8px 0 6px;}
+
+  h3.subhead{
+    font-size:15px; color:var(--accent-dark); margin:22px 0 10px;
+    padding:6px 10px; background:var(--accent-soft); border-radius:5px;
+    scroll-margin-top:150px;
+  }
+  label.sub-head{
+    display:flex; gap:9px; align-items:flex-start;
+    font-size:14px; color:var(--ink); font-weight:700;
+    margin:18px 0 8px; cursor:pointer;
+  }
+  label.sub-head input[type=checkbox]{
+    margin-top:2px; width:16px; height:16px; accent-color:var(--accent);
+    flex-shrink:0; cursor:pointer;
+  }
+  label.sub-head.done > span{color:#3f7a5c;}
+  #jump-btn{
+    background:transparent; border:1px solid rgba(255,255,255,.35); color:#fff;
+    border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;
+  }
+  #jump-btn:hover{background:rgba(255,255,255,.12);}
+  #jump-btn:disabled{opacity:.45; cursor:default;}
+  @keyframes jumpflash{
+    0%{background:rgba(95,208,160,.42);}
+    100%{background:transparent;}
+  }
+  .jump-hit{animation:jumpflash 1.6s ease-out;}
+  h4.microhead{
+    font-size:14px; color:var(--ink); margin:18px 0 8px; font-weight:700;
+  }
+
+  /* ---------- 步驟／checklist ---------- */
+  .step{
+    border-left:3px solid var(--line);
+    padding-left:14px; margin:0 0 16px;
+  }
+  .step.done{border-left-color:#5fa87d;}
+  .step-head{
+    display:flex; gap:10px; align-items:flex-start; font-weight:600; font-size:14.5px;
+  }
+  .step-head input[type=checkbox]{
+    margin-top:3px; width:17px; height:17px; accent-color:var(--accent);
+    flex-shrink:0; cursor:pointer;
+  }
+  .step.done .step-head > span{color:#3f7a5c;}
+  .step-body{margin:8px 0 0 27px; font-size:14px;}
+  .step-body p{margin:6px 0;}
+
+  ul.plain{margin:6px 0 6px 27px; padding:0; font-size:14px;}
+  ul.plain li{margin:4px 0;}
+
+  .note{
+    background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-ink);
+    border-radius:var(--radius); padding:9px 13px; margin:8px 0; font-size:13.5px;
+  }
+  .note b{color:#8a5a00;}
+
+  /* ---------- 指令區塊 ---------- */
+  .cmd-block{
+    background:var(--term-bg); border-radius:var(--radius);
+    padding:8px 10px; margin:10px 0;
+  }
+  .cmd-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:5px 6px; border-radius:4px;
+  }
+  .cmd-row:hover{background:rgba(255,255,255,.04);}
+  .cmd-row code{
+    color:var(--term-ink); font-size:13.5px; white-space:pre-wrap; word-break:break-all;
+  }
+  .cmd-row code::before{
+    content:"$ "; color:#5fd0a0;
+  }
+  .cmd-row .copy-btn{
+    background:transparent; border:1px solid #33414f; color:#9db4c4;
+    border-radius:4px; padding:3px 10px; font-size:12px; cursor:pointer; flex-shrink:0;
+  }
+  .cmd-row .copy-btn:hover{background:#1c2732; color:#fff;}
+  .copy-btn.copied{
+    background:var(--accent)!important; color:#fff!important; border-color:var(--accent)!important;
+  }
+
+  /* ---------- 表格 ---------- */
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:13.5px;}
+  th, td{border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:middle;}
+  th{background:#eef2f5; color:var(--accent-dark);}
+  td.chk-cell{text-align:center; width:80px;}
+  td.chk-cell input{width:17px; height:17px; accent-color:var(--accent); cursor:pointer;}
+
+  footer{
+    max-width:880px; margin:20px auto 0; padding:0 18px; color:var(--muted); font-size:12px;
+    text-align:center;
+  }
+
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  @media print{
+    header, .copy-btn, #reset-btn, nav.quicknav{display:none!important;}
+    body{background:#fff;}
+    section.block{break-inside:avoid; border:1px solid #ccc;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div>
+      <h1>車站端SPS新舊切換流程（正式用）<span class="ver-badge">v1.1_09.09</span></h1>
+      <div class="sub">線上遷移操作手冊 — 依「車站端SPS新舊切換流程_正式用.docx」轉錄</div>
+    </div>
+    <div class="progress-wrap">
+      <span id="progress-text">0 / 0 已完成</span>
+      <div class="progress-bar"><i id="progress-fill"></i></div>
+      <button id="jump-btn" onclick="jumpToNext()">跳到未完成</button>
+      <button id="reset-btn" onclick="resetProgress()">重置進度</button>
+    </div>
+  </div>
+  <nav class="quicknav">
+    <a href="#overview">總覽</a>
+    <a href="#sec-a">A. 前置作業</a>
+    <a href="#sec-b-old">B. 舊SPS執行步驟</a>
+    <a href="#sec-b-new">B. 新SPS執行步驟</a>
+    <a href="#sec-ssh">51/230主機 ssh修正</a>
+    <a href="#sec-check">安裝結束檢查</a>
+    <a href="#sec-version">版本確認</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ================= 總覽 ================= -->
+  <div class="overview-card" id="overview">
+    <div class="fields">
+      <div class="field-line">車站：<input type="text" id="fld-station" class="persist" placeholder="填入車站名稱" autocomplete="off"></div>
+      <div class="field-line">人員：<input type="text" id="fld-operator" class="persist" placeholder="填入執行人員" autocomplete="off"></div>
+      <div class="field-line">SPS IP：<input type="text" id="sps-ip" placeholder="172.20.30.240" style="width:150px;" autocomplete="off"><span id="ip-hint" class="ip-hint">未套用</span></div>
+    </div>
+    <p class="kv"><b>預估執行時程：</b>一小時</p>
+    <p class="kv"><b>站務說明：</b>ACS登入後，<span style="background:#fff2b3">預估在20分鐘後SPS會斷線</span>，等SPS更換完後，將會安裝PAM</p>
+
+    <h4 class="microhead">流程</h4>
+    <div class="flow">
+      <span class="node">PAO ACS人員登入</span><span class="arrow">›</span>
+      <span class="node">新SPS檢查（10分鐘包含重開機）</span><span class="arrow">›</span>
+      <span class="node">舊SPS備份（預估10分鐘）</span><span class="arrow">›</span>
+      <span class="node">新SPS資料恢復與更新（預估30分鐘，同時間CCBE可以先安裝）</span><span class="arrow">›</span>
+      <span class="node">SPS更新完畢</span><span class="arrow">›</span>
+      <span class="node">PAM進行安裝</span>
+    </div>
+
+    <div class="note" style="margin-top:14px;">
+      <b>注意：</b>執行過後請打勾（腳本一律用root執行）
+    </div>
+  </div>
+
+  <!-- ================= A. 前置作業 ================= -->
+  <section class="block" id="sec-a">
+    <h2>A. 前置作業</h2>
+    <p class="desc">（有執行請打勾）</p>
+
+    <h3 class="subhead">(一) 新的主機檢查BIOS設定（開機按ESC或是DEL）</h3>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 確認電源設定為Chipser &gt; Power on</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 路徑確認目前狀態為Dedicated，步驟如下：</span></label>
+      <div class="step-body">
+        <div class="note">
+          BIOS進入RAID設定 &gt; Advanced &gt; Adaptec SmartRAID 3101-4i
+          （此部分請確認是否為4i，<b>如果為8i請立刻停止作業</b>）<br>
+          &gt; Array Configuration &gt; Manage Arrays &gt; Array A &gt; Manage Spare Drives &gt; Change Spare type to Dedicated &gt;
+          如果顯在顯示 change to Spare type to Autoxxxx，請執行【Submit Changes】完成設定
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">(二) 處理RAID的部分</h3>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 清除新SPS上原有的參數資料夾</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>rm -rf HLLParam/</code><button class="copy-btn" data-cmd="rm -rf HLLParam/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>rm -rf XYSSParam/</code><button class="copy-btn" data-cmd="rm -rf XYSSParam/" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <div class="note">
+          <b>注意：</b>此處為<b>新SPS</b>上的操作，請先用  <span class="mono">ifconfig</span> 確認登入的是新機再執行。
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 安裝RAID工具</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>mkdir /opt/RAID</code><button class="copy-btn" data-cmd="mkdir /opt/RAID" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>mv /opt/msm_linux_x64_B27960.tgz /opt/RAID</code><button class="copy-btn" data-cmd="mv /opt/msm_linux_x64_B27960.tgz /opt/RAID" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>cd /opt/RAID</code><button class="copy-btn" data-cmd="cd /opt/RAID" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zxvf msm_linux_x64_B27960.tgz</code><button class="copy-btn" data-cmd="tar zxvf msm_linux_x64_B27960.tgz" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./StorMan-5.03-27960.x86_64.bin</code><button class="copy-btn" data-cmd="./StorMan-5.03-27960.x86_64.bin" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>詢問的部分都用default直接按Enter繼續</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /usr/StorMan</code><button class="copy-btn" data-cmd="cd /usr/StorMan" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>確認資料夾中已安裝RAID工具</p>
+        <p>於apache_tomcat中的conf 修改 port 8443改為9453</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /usr/StorMan/apache-tomcat/conf</code><button class="copy-btn" data-cmd="cd /usr/StorMan/apache-tomcat/conf" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>vim server.xml</code><button class="copy-btn" data-cmd="vim server.xml" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">(三)</h3>
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 將新的SPS資料夾中的檔案先放到新SPS的/opt上</span></label>
+    </div>
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 小工具先放到新的SPS中</span></label>
+      <div class="step-body">
+        <p>新的主機下：</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>systemctl start vsftpd.service</code><button class="copy-btn" data-cmd="systemctl start vsftpd.service" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>這樣小工具的人就可以去新SPS抓檔案（當做到新的SPS置換IP為240要記得通知小工具的人員）</p>
+      </div>
+    </div>
+
+    <h3 class="subhead">(四) 打包舊的SPS將參數資料夾（HLLParam &amp; XYSSParam）傳輸到新的SPS上</h3>
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 登入舊的SPS，打包參數資料夾並傳送到新SPS</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zcvf HLLParam.tar.gz HLLParam/</code><button class="copy-btn" data-cmd="tar zcvf HLLParam.tar.gz HLLParam/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zcvf XYSSParam.tar.gz XYSSParam/</code><button class="copy-btn" data-cmd="tar zcvf XYSSParam.tar.gz XYSSParam/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>scp HLLParam.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp HLLParam.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>scp XYSSParam.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp XYSSParam.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 登入到新的SPS，清除舊參數資料夾後解壓縮</span></label>
+      <div class="step-body">
+        <div class="note">
+          <b>備註：再次確認。</b>此處的 <span class="mono">rm -rf HLLParam/</span>、<span class="mono">rm -rf XYSSParam/</span> 與前置作業 (二) 的 1. 重複，
+          目的是在解壓縮前<b>再次確認</b>新SPS上沒有殘留的舊參數資料夾。
+        </div>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>rm -rf HLLParam/</code><button class="copy-btn" data-cmd="rm -rf HLLParam/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>rm -rf XYSSParam/</code><button class="copy-btn" data-cmd="rm -rf XYSSParam/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zxvf HLLParam.tar.gz</code><button class="copy-btn" data-cmd="tar zxvf HLLParam.tar.gz" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zxvf XYSSParam.tar.gz</code><button class="copy-btn" data-cmd="tar zxvf XYSSParam.tar.gz" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= B. 新舊切換流程 ================= -->
+
+  <section class="block" id="sec-b-old">
+    <h2>B. 新舊切換流程</h2>
+    <h3 class="subhead">舊SPS上執行步驟（腳本一律用root執行）</h3>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 使用root身分登入舊的SPS，密碼 spsadministrator</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 創建資料夾</span></label>
+      <div class="step-body">
+        <div class="cmd-block"><div class="cmd-row"><code>mkdir /home/sps/WL</code><button class="copy-btn" data-cmd="mkdir /home/sps/WL" onclick="copyCmd(this)">複製</button></div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>3. 將 old_station_backup.sh、disable_service.sh、tarUD.sh 三個sh放到 /home/sps/WL 中</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>4. 舊SPS備份流程先給予sh執行權限</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x old_station_backup.sh</code><button class="copy-btn" data-cmd="chmod +x old_station_backup.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x disable_service.sh</code><button class="copy-btn" data-cmd="chmod +x disable_service.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>5. 關閉 /etc/crontab 內的 afcmcheck.sh，將那一行 # 掉</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>6. 執行舊SPS備份（此部分會在 /home/sps 上面產生一個 WL.tar.gz 的壓縮檔）</span></label>
+      <div class="step-body">
+        <div class="cmd-block"><div class="cmd-row"><code>./old_station_backup.sh</code><button class="copy-btn" data-cmd="./old_station_backup.sh" onclick="copyCmd(this)">複製</button></div></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>7. 將SPS服務關閉</span></label>
+      <div class="step-body">
+        <div class="cmd-block"><div class="cmd-row"><code>./disable_service.sh</code><button class="copy-btn" data-cmd="./disable_service.sh" onclick="copyCmd(this)">複製</button></div></div>
+      </div>
+    </div>
+
+
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>8. 將 WL.tar.gz 資料夾傳送到新的SPS上</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>scp WL.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp WL.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;">（測試區為243）</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>9. 車站ssh的shellScript（柏凱）</span></label>
+      <div class="step-body">
+        <p>複製免金鑰完成後，其他主機要連進車站SPS的都需要刪除 know_host 內的IP，然後第一次連線填寫yes</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/Tim</code><button class="copy-btn" data-cmd="cd /home/sps/Tim" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./copy_ssh.sh &lt;新SPS IP&gt;</code><button class="copy-btn" data-cmd="./copy_ssh.sh <新SPS IP>" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>10. 將 old_SPS IP 改為 243</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>vim /etc/sysconfig/network-script/ifcfg-eth0</code><button class="copy-btn" data-cmd="vim /etc/sysconfig/network-script/ifcfg-eth0" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>service network restart</code><button class="copy-btn" data-cmd="service network restart" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;">（將240改為243；請用ifconfig確認已修改為243）</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>11. 壓縮UD2與sent資料夾兩天內的檔案</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x tarUD.sh</code><button class="copy-btn" data-cmd="chmod +x tarUD.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./tarUD.sh</code><button class="copy-btn" data-cmd="./tarUD.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>12. 放著等他執行完後傳到新的SPS上</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>13. 將 old_SPS 的UPS訊號線RS-232接到New_SPS上，主機後面</span></label>
+      <div class="step-body">
+        <div class="note">
+          可看到最右邊會有兩個Port，最右邊靠機殼的Port是 <b>ttyS4（SPS）</b>，左邊的Port是 <b>ttyS5（PAM）</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>14. HLLParam &amp; XYSSParam 執行打包然後傳到新的SPS（前置步驟4）</span></label>
+    </div>
+  </section>
+
+  <section class="block" id="sec-b-new">
+    <h3 class="subhead" style="margin-top:0;">新SPS上執行步驟（腳本一律用root執行）</h3>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 使用root身分登入<b>新的SPS</b>，密碼 spsadministrator</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>2. 解壓縮 WL.tar.gz</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tar zxvf WL.tar.gz</code><button class="copy-btn" data-cmd="tar zxvf WL.tar.gz" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>3. 將&lt;新的SPS&gt;資料夾檔案從筆電透過傳輸軟體放到 /home/sps/WL 中</span></label>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>4. 執行新車站還原，先給予sh執行權限並且執行</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x new_station_insert.sh</code><button class="copy-btn" data-cmd="chmod +x new_station_insert.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./new_station_insert.sh</code><button class="copy-btn" data-cmd="./new_station_insert.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <div class="note">
+           ＊如果有跳出 <span class="mono">Failed to stop SPSAgent.service : Unit SPSAgent.service not loaded</span> 可以繼續做，只要後續確認 <span class="mono">/opt/SPSAgent/SPSAgent.log</span> 有在寫入。<br>
+          <b>如果沒有寫入，請立刻聯繫柏凱確認。</b>
+        </div>
+        <div class="note">
+          ＊如果有 blob.bak 錯誤是正常的，代表沒有檔案
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>5. 於 /home/sps/WL 中確認下列更新檔案存在（之後會調整將Tomcat.tar.gz先放置到新的SPS的 /opt/WL 資料夾中）</span></label>
+      <div class="step-body">
+        <ul class="plain">
+          <li>一. s_bin.tar.gz</li>
+          <li>二. Big_config.tar.gz</li>
+          <li>三. Big_bin.tar.gz</li>
+          <li>四. Tomcat.tar.gz（如果前面已放到/opt請搬移到/home/sps/WL中）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>6. 更新程式與ECMU</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x update_new.sh</code><button class="copy-btn" data-cmd="chmod +x update_new.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./update_new.sh</code><button class="copy-btn" data-cmd="./update_new.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>7. 加入root與sps的.netrc</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>chmod +x crontab_all.sh</code><button class="copy-btn" data-cmd="chmod +x crontab_all.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./crontab_all.sh</code><button class="copy-btn" data-cmd="./crontab_all.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>8. 修改程式設定檔與MMI設定檔，然後檢視資料庫內容是否正確</span></label>
+      <div class="step-body">
+        <p>修改完後，可將程式檔重包一份，之後只要改SPS的IP就好（CDPS固定）</p>
+
+        <p>先確認 <span class="mono">/home/sps/WL</span> 下有 <span class="mono">change_SPSconfig.sh</span> 與 <span class="mono">ip_check.txt</span> 兩個檔案：</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>ls -l change_SPSconfig.sh ip_check.txt</code><button class="copy-btn" data-cmd="ls -l change_SPSconfig.sh ip_check.txt" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>兩個檔案都在，再給予執行權限並執行：</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>chmod +x change_SPSconfig.sh</code><button class="copy-btn" data-cmd="chmod +x change_SPSconfig.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./change_SPSconfig.sh</code><button class="copy-btn" data-cmd="./change_SPSconfig.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <div class="note">
+          執行過程會要求輸入<b>車站代碼</b>，以及新SPS IP <span class="mono">172.xxx.xxx.240</span>
+        </div>
+        <p><b>需要修改的檔案：</b></p>
+        <table>
+          <thead><tr><th>程式名稱</th><th>修改內容</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">afccomm.conf</td><td>SPS IP與車站代碼
+              <ol style="margin:6px 0 0 18px; padding:0;">
+                <li>SpsId</li>
+                <li>StationId</li>
+                <li>StationName</li>
+                <li>FtpServerIp</li>
+                <li>NtpServer</li>
+                <li>BroadcastAddress</li>
+                <li>ORB Interface</li>
+              </ol>
+            </td></tr>
+            <tr><td class="mono">blobCreator.ini</td><td>車站代碼</td></tr>
+            <tr><td class="mono">cdps_com_txn.ini</td><td>車站代碼</td></tr>
+            <tr><td class="mono">MsgTransfer.ini</td><td>車站代碼</td></tr>
+            <tr><td class="mono">TxnValidation.ini</td><td>IAS IP修改（雖然沒有用但保持一致）</td></tr>
+            <tr><td class="mono">DBINFO.DAT</td><td>SPS IP</td></tr>
+            <tr><td class="mono">IAS_DBINFO.DAT</td><td>IAS IP修改（雖然沒有用但保持一致）</td></tr>
+            <tr><td class="mono">IAS_NEW_DBINFO.DAT</td><td>SPS IP</td></tr>
+            <tr><td class="mono">MMIServerCOMMSend.ini</td><td>SPS IP</td></tr>
+            <tr><td class="mono">OC_UPS_Control.xml</td><td>設定ttyS4(SPS) ttyS5(PAM)</td></tr>
+            <tr><td class="mono">/etc/chrony.conf</td><td>allow設定為當站網段</td></tr>
+          </tbody>
+        </table>
+        <p>修改好，請執行 check_config.sh 確認設定檔是否都設定正確</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x check_config.sh</code><button class="copy-btn" data-cmd="chmod +x check_config.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./check_config.sh</code><button class="copy-btn" data-cmd="./check_config.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>9. 設定服務開機啟動與時間同步</span></label>
+      <div class="step-body">
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>1. 設定服務開機啟動</span></label>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/WL" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>chmod +x enable_service.sh</code><button class="copy-btn" data-cmd="chmod +x enable_service.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./enable_service.sh</code><button class="copy-btn" data-cmd="./enable_service.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>2. 啟動時間同步並校時</span></label>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>systemctl start chronyd.service</code><button class="copy-btn" data-cmd="systemctl start chronyd.service" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>date</code><button class="copy-btn" data-cmd="date" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>輸入 <span class="mono">date</span> 確認與現在時間一致，可能須等待幾秒鐘同步。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>10. 確認SPS狀態與修正hosts（增加檢查服務）</span></label>
+      <div class="step-body">
+        <p>需確認 chronyd.conf 內的設定是否正確（allow的部分每站都要設定）</p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>chmod +x check_sps.sh</code><button class="copy-btn" data-cmd="chmod +x check_sps.sh" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./check_sps.sh</code><button class="copy-btn" data-cmd="./check_sps.sh" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;">需輸入車站代碼 spsxxx（數字就好）</p>
+        <div class="note"><b>Note：</b>執行結果中chrony與SPSAgent會是Fail的，重開機就會自動跑起來（此時只有設定開機啟動還沒啟動）</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>11. 確認資料庫IPV6的設定</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /pgsql/data/</code><button class="copy-btn" data-cmd="cd /pgsql/data/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>vim postgresql.conf</code><button class="copy-btn" data-cmd="vim postgresql.conf" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;">將設定檔中的listen ip 改為0.0.0.0，並且開啟port指定5432</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>12. 用KVM操作修改新SPS IP改為240</span></label>
+      <div class="step-body">
+        <p>請透過命令 <span class="mono">nmtui</span> 修改，修改過後請打 <span class="mono">ifconfig</span> 確認修改完成</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>13. 修改UPS設定檔（ttyS4=SPS ttyS5=PAM）</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/SPS/config</code><button class="copy-btn" data-cmd="cd /home/sps/SPS/config" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>vim OC_UPSController.xml</code><button class="copy-btn" data-cmd="vim OC_UPSController.xml" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>14. 修正 /usr/lib/systemd/system/Tomcat.service 改為 SPSMMI.service</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /usr/lib/systemd/system/</code><button class="copy-btn" data-cmd="cd /usr/lib/systemd/system/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>mv Tomcat.service SPSMMI.service</code><button class="copy-btn" data-cmd="mv Tomcat.service SPSMMI.service" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>15. 修正SPSAgent.service裡面的設定改為postgresql-15.service</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /usr/lib/systemd/system/</code><button class="copy-btn" data-cmd="cd /usr/lib/systemd/system/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>vim SPSAgent.service</code><button class="copy-btn" data-cmd="vim SPSAgent.service" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>systemctl daemon-reload</code><button class="copy-btn" data-cmd="systemctl daemon-reload" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>systemctl enable SPSMMI.service</code><button class="copy-btn" data-cmd="systemctl enable SPSMMI.service" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>丟新的檔案（SPSWatchDog、SPSEventAlarm）</span></label>
+      <div class="step-body">
+        <div class="note">
+          丟新的檔案：<b>SPSWatchDog</b> 及 <b>SPSEventAlarm</b>
+        </div>
+      </div>
+    </div>
+
+   
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>16. 重開機</span></label>
+    </div>
+  </section>
+
+  <!-- ================= 51/230 主機 ssh 修正 ================= -->
+  <section class="block" id="sec-ssh">
+    <h2>51主機與230主機的ssh修正</h2>
+
+    <h3 class="subhead">【51主機（172.0.0.51）】</h3>
+    <div class="step">
+      <div class="step-body" style="margin-left:0;">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>ssh root@172.0.0.51</code><button class="copy-btn" data-cmd="ssh root@172.0.0.51" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;">密碼輸入 trtc2036</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 連線至同IP不同主機處理（需處理兩種權限）</span></label>
+      <div class="step-body">
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>【root權限】密碼 trtc2036</span></label>
+        <p>檢視並清除該站SPS IP</p>
+        <div class="cmd-block"><div class="cmd-row"><code>vim ~/.ssh/known_hosts</code><button class="copy-btn" data-cmd="vim ~/.ssh/known_hosts" onclick="copyCmd(this)">複製</button></div></div>
+
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>【aj權限】</span></label>
+        <div class="cmd-block"><div class="cmd-row"><code>su aj</code><button class="copy-btn" data-cmd="su aj" onclick="copyCmd(this)">複製</button></div></div>
+        <p>檢視並清除該站SPS IP</p>
+        <div class="cmd-block"><div class="cmd-row"><code>vim ~/.ssh/known_hosts</code><button class="copy-btn" data-cmd="vim ~/.ssh/known_hosts" onclick="copyCmd(this)">複製</button></div></div>
+
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>嘗試連線</span></label>
+        <p><b>【root權限】</b></p>
+        <div class="cmd-block"><div class="cmd-row"><code>ssh root@該站SPS IP</code><button class="copy-btn" data-cmd="ssh root@該站SPS IP" onclick="copyCmd(this)">複製</button></div></div>
+        <p>遇到第一次連線輸入 yes，不用輸入密碼即可登入為成功！</p>
+
+        <p><b>【aj權限】</b></p>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>su aj</code><button class="copy-btn" data-cmd="su aj" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>ssh root@該站SPS IP</code><button class="copy-btn" data-cmd="ssh root@該站SPS IP" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>遇到第一次連線輸入 yes，不用輸入密碼即可登入為成功！</p>
+      </div>
+    </div>
+
+    <h3 class="subhead">【230主機（172.0.0.230）】</h3>
+    <div class="step">
+      <div class="step-body" style="margin-left:0;">
+        <div class="cmd-block"><div class="cmd-row"><code>ssh root@172.0.0.230</code><button class="copy-btn" data-cmd="ssh root@172.0.0.230" onclick="copyCmd(this)">複製</button></div></div>
+        <p style="color:var(--muted);font-size:13px;">（這邊會直接登入，這裡已有Key存在）密碼輸入 trtc2036</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>1. 連線至同IP不同主機處理</span></label>
+      <div class="step-body">
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>【aj權限】密碼 trtc2036</span></label>
+        <div class="cmd-block"><div class="cmd-row"><code>su aj</code><button class="copy-btn" data-cmd="su aj" onclick="copyCmd(this)">複製</button></div></div>
+        <p>檢視並清除該站SPS IP</p>
+        <div class="cmd-block"><div class="cmd-row"><code>vim ~/.ssh/known_hosts</code><button class="copy-btn" data-cmd="vim ~/.ssh/known_hosts" onclick="copyCmd(this)">複製</button></div></div>
+
+        <label class="sub-head"><input type="checkbox" class="track sub"><span>【aj權限】</span></label>
+        <div class="cmd-block">
+          <div class="cmd-row"><code>su aj</code><button class="copy-btn" data-cmd="su aj" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>ssh root@該站SPS IP</code><button class="copy-btn" data-cmd="ssh root@該站SPS IP" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>遇到第一次連線輸入 yes，不用輸入密碼即可登入為成功！</p>
+      </div>
+    </div>
+
+    <h3 class="subhead">SPSAgent拋轉正常</h3>
+    <div class="step">
+      <div class="step-body" style="margin-left:0;">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /opt/SPSAgent/</code><button class="copy-btn" data-cmd="cd /opt/SPSAgent/" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>tail -f SPSAgent.log</code><button class="copy-btn" data-cmd="tail -f SPSAgent.log" onclick="copyCmd(this)">複製</button></div>
+        </div>
+        <p>在有交易的情況下確認，是否有產生類似【file move ./CT/sps50InOutTxn20260731091007.csv =&gt; ./CT_BAK/sps50InOutTxn20260731091007.csv】的訊息</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 安裝結束檢查事項 ================= -->
+  <section class="block" id="sec-check">
+    <h2>安裝結束檢查事項</h2>
+
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>ECMU檢查設備連線正常</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>可於閘門產生開關維修門或是闖入安全區確認事件警報訊息正常</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>確認小工具運作正常</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>ssh的連線測試需要驗證</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>確認站務帳整登入正常</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>舊SPS的UD2與sent如果打包好了，是否有傳到新SPS上面解壓縮</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>確認新SPS上的UPS設定檔有修改ttyS4=SPS ttyS5=PAM</span></label></div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>關懷名單測試，MMI上面要可以pop up</span></label>
+      <div class="step-body">
+        <div class="cmd-block">
+          <div class="cmd-row"><code>cd /home/sps/bin</code><button class="copy-btn" data-cmd="cd /home/sps/bin" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>./GrayListEventTest 999 11</code><button class="copy-btn" data-cmd="./GrayListEventTest 999 11" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>確認舊的SPS /etc/crontab裡面的afcmcheck.sh有#掉</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>遙控閘門免費開啟關閉</span></label></div>
+    <div class="step"><label class="step-head"><input type="checkbox" class="track"><span>檢查設定檔，尤其是MsgTranfer是否路徑的 / 都正確</span></label></div>
+
+    <div class="step">
+      <label class="step-head"><input type="checkbox" class="track"><span>確認旅客交易資料上傳是否正常</span></label>
+    </div>
+    
+    <div class="step">
+    <label class="step-head"><input type="checkbox" class="track"><span>更新資料庫</span></label>  
+      <div class="step-body" >
+        <div class="cmd-block">
+          <div class="cmd-row"><code>psql -U sps -c</code><button class="copy-btn" data-cmd="psql -U sps -c" onclick="copyCmd(this)">複製</button></div>
+          <div class="cmd-row"><code>update spstr_evt_define set is_mmi_do = 0, level_area= 0 where tag_name = 'SWTCOM' and device_type = 9</code><button class="copy-btn" data-cmd="update spstr_evt_define set is_mmi_do = 0, level_area= 0 where tag_name = 'SWTCOM' and device_type = 9" onclick="copyCmd(this)">複製</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 版本確認 ================= -->
+  <section class="block" id="sec-version">
+    <h2>版本確認</h2>
+    <p class="desc">（如有新版請先行填寫，並於安裝完成後確認）</p>
+    <table>
+      <thead><tr><th>程式</th><th>安裝包版本</th><th>新版</th><th>確認請打勾</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">afccomm</td><td>C5.2.0.2</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">blobCreator</td><td>3.1.8</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">cdps_com_cdps</td><td>1.1.0</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">cdps_com_txn</td><td>2.0.5</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">checkFile</td><td>1.1.4</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">HouseKeeping</td><td>1.2.3</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">MsgTransfer</td><td>1.1.2</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">stockmgr</td><td>1.1.4</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">sync12</td><td>1.4.4</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">sysMsgFlowCtrl</td><td>1.4.14</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">timer12</td><td>1.0.2</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">TxnAudit</td><td>1.2.5</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">TxnValidation</td><td>3.2.1a</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">CDPSCMDCOM</td><td>1.0.2</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">CDPSEventCOM</td><td>1.2.4</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">MMIServerCOMMSend</td><td>1.4.3</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">OC_UPS_Control</td><td>1.2.6</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSCommandController</td><td>1.2.6</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSConfigController</td><td>1.5.3-1</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSEventAlarmStatusController</td><td>2.0.1f1</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSEventLogController</td><td>1.4.3</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSFNR</td><td>1.4.0</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSMMIServerReceive</td><td>1.0.7.a</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+        <tr><td class="mono">SPSWatchDog</td><td>2.0.5</td><td></td><td class="chk-cell"><input type="checkbox" class="track"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  本頁內容依「車站端SPS新舊切換流程_正式用.docx」轉錄為HTML操作介面。車站、人員、SPS IP 與勾選進度會保存在本機瀏覽器（重新整理不會遺失，換裝置需重新填寫）。
+</footer>
+
+<script>
+  function feedback(btn){
+    const orig = btn.textContent;
+    btn.textContent = '已複製!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1100);
+  }
+  function doCopy(text, btn){
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(() => feedback(btn)).catch(() => fallbackCopy(text, btn));
+    } else {
+      fallbackCopy(text, btn);
+    }
+  }
+  function fallbackCopy(text, btn){
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+    feedback(btn);
+  }
+  function copyCmd(btn){
+    doCopy(btn.getAttribute('data-cmd'), btn);
+  }
+
+
+  // ---- localStorage 安全包裝（某些瀏覽器以 file:// 開啟時會擋，擋掉不能讓整支腳本掛掉）----
+  const LS = {
+    get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+    set(k,v){ try { localStorage.setItem(k,v); } catch(e){} },
+    remove(k){ try { localStorage.removeItem(k); } catch(e){} }
+  };
+
+  // ---- IP 自動帶入 ----
+  // 上方填入完整 SPS IP -> 取前三段當網段，替換全文的 172.xxx.xxx.NNN、
+  // 「該站SPS IP」(=.240)、「<新SPS IP>」(=.241)
+  const IP_KEY = 'sps_switch_v1_0909_ip';
+  const IP_RE  = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\.(\d{1,3}))?$/;
+
+  const textTargets = [];   // {node, tpl}
+  const attrTargets = [];   // {el, tpl}
+
+  function needsSubst(t){
+    return t.indexOf('172.xxx.xxx') >= 0 || t.indexOf('該站SPS IP') >= 0 || t.indexOf('<新SPS IP>') >= 0;
+  }
+
+  (function collect(){
+    const walker = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      if (needsSubst(n.data)) textTargets.push({ node: n, tpl: n.data });
+    }
+    document.querySelectorAll('[data-cmd]').forEach(el => {
+      const c = el.getAttribute('data-cmd');
+      if (needsSubst(c)) attrTargets.push({ el: el, tpl: c });
+    });
+  })();
+
+  function substitute(tpl, prefix){
+    if (!prefix) return tpl;
+    return tpl
+      .replace(/172\.xxx\.xxx/g, prefix)
+      .replace(/該站SPS IP/g, prefix + '.240')
+      .replace(/<新SPS IP>/g, prefix + '.241');
+  }
+
+  function applyIp(){
+    const raw = ipInput.value.trim();
+    const hint = document.getElementById('ip-hint');
+    let prefix = null;
+
+    if (raw === '') {
+      hint.textContent = '未套用';
+      hint.className = 'ip-hint';
+    } else {
+      const m = raw.match(IP_RE);
+      const okRange = m && [m[1], m[2], m[3], m[4]].every(v => v === undefined || (+v >= 0 && +v <= 255));
+      if (okRange) {
+        prefix = m[1] + '.' + m[2] + '.' + m[3];
+        hint.textContent = '已套用 ' + prefix + '.x';
+        hint.className = 'ip-hint ok';
+      } else {
+        hint.textContent = 'IP 格式不正確';
+        hint.className = 'ip-hint bad';
+      }
+    }
+
+    textTargets.forEach(t => { t.node.data = substitute(t.tpl, prefix); });
+    attrTargets.forEach(t => { t.el.setAttribute('data-cmd', substitute(t.tpl, prefix)); });
+    document.querySelectorAll('.cmd-row code').forEach(c => {
+      c.classList.toggle('subst', !!prefix && /\d+\.\d+\.\d+\.\d+/.test(c.textContent));
+    });
+    LS.set(IP_KEY, raw);
+  }
+
+  const ipInput = document.getElementById('sps-ip');
+  ipInput.value = LS.get(IP_KEY) || '';
+  ipInput.addEventListener('input', applyIp);
+  applyIp();
+
+  // ---- 車站／人員文字欄位持久化（與 IP、勾選進度一致）----
+  const TEXT_PREFIX = 'sps_switch_v1_1_0909_txt_';
+  const textFields = Array.from(document.querySelectorAll('input.persist'));
+  textFields.forEach(el => {
+    el.dataset.key = TEXT_PREFIX + el.id;
+    el.value = LS.get(el.dataset.key) || '';
+    el.addEventListener('input', () => LS.set(el.dataset.key, el.value));
+  });
+
+  // ---- 勾選進度追蹤（localStorage 持久化） ----
+  const STORAGE_PREFIX = 'sps_switch_v1_1_0909_';
+  const boxes = Array.from(document.querySelectorAll('.track'));
+
+  // 母子關係：同一個 .step 內，.step-head 的框是母框，.step-body 裡的框是子框
+  const groups = [];
+  document.querySelectorAll('.step').forEach(st => {
+    const parent = st.querySelector(':scope > .step-head input.track');
+    const kids = Array.from(st.querySelectorAll('.step-body input.track'));
+    if (parent && kids.length) groups.push({ parent: parent, kids: kids });
+  });
+  const parentOf = new Map();   // 子框 -> 母框
+  const kidsOf   = new Map();   // 母框 -> 子框陣列
+  groups.forEach(g => {
+    kidsOf.set(g.parent, g.kids);
+    g.kids.forEach(k => parentOf.set(k, g.parent));
+  });
+
+  // 進度只計「葉節點」，母框由子框推導，避免重複計數
+  const leaves = boxes.filter(b => !kidsOf.has(b));
+
+  function markDone(cb){
+    if (cb.classList.contains('sub')) {
+      cb.closest('.sub-head')?.classList.toggle('done', cb.checked);
+    } else {
+      cb.closest('.step')?.classList.toggle('done', cb.checked);
+    }
+  }
+  function save(cb){
+    LS.set(cb.dataset.key, cb.checked ? '1' : '0');
+  }
+  function syncParent(parent){
+    const kids = kidsOf.get(parent);
+    const done = kids.filter(k => k.checked).length;
+    parent.checked = (done === kids.length);
+    parent.indeterminate = (done > 0 && done < kids.length);
+    markDone(parent);
+    save(parent);
+  }
+
+  boxes.forEach((cb, i) => {
+    cb.dataset.key = STORAGE_PREFIX + i;
+    if (LS.get(cb.dataset.key) === '1') cb.checked = true;
+    markDone(cb);
+    cb.addEventListener('change', () => {
+      save(cb);
+      markDone(cb);
+      // 母框 -> 全部子框跟著同步
+      if (kidsOf.has(cb)) {
+        cb.indeterminate = false;
+        kidsOf.get(cb).forEach(k => { k.checked = cb.checked; markDone(k); save(k); });
+      }
+      // 子框 -> 回推母框
+      if (parentOf.has(cb)) syncParent(parentOf.get(cb));
+      updateProgress();
+    });
+  });
+  // 載入後先依子框狀態校正一次母框
+  groups.forEach(g => syncParent(g.parent));
+
+  function updateProgress(){
+    const total = leaves.length;
+    const done = leaves.filter(b => b.checked).length;
+    document.getElementById('progress-text').textContent = done + ' / ' + total + ' 已完成';
+    document.getElementById('progress-fill').style.width = (total ? (done/total*100) : 0) + '%';
+    document.getElementById('jump-btn').disabled = (done === total);
+  }
+
+  // ---- 跳到下一個未完成（由上往下，到底折回最上面）----
+  const HEADER_OFFSET = 170;
+  function jumpToNext(){
+    const pending = leaves.filter(b => !b.checked);
+    if (!pending.length) return;
+    // 永遠跳到全文由上往下第一個未完成項目（leaves 已是文件順序）
+    const rowOf = cb => cb.closest('.step, tr') || cb;
+    const topOf = cb => rowOf(cb).getBoundingClientRect().top + window.scrollY;
+    const next = pending[0];
+    const row = rowOf(next);
+    window.scrollTo({ top: topOf(next) - HEADER_OFFSET, behavior: 'smooth' });
+    document.querySelectorAll('.jump-hit').forEach(el => el.classList.remove('jump-hit'));
+    void row.offsetWidth;          // 強制重排，讓動畫可以重播
+    row.classList.add('jump-hit');
+  }
+
+  function resetProgress(){
+    if(!confirm('確定要清除車站、人員、SPS IP 與所有勾選進度嗎？此動作無法復原。')) return;
+    boxes.forEach(cb => {
+      cb.checked = false;
+      cb.indeterminate = false;
+      LS.remove(cb.dataset.key);
+      markDone(cb);
+    });
+    textFields.forEach(el => { el.value = ''; LS.remove(el.dataset.key); });
+    ipInput.value = '';
+    LS.remove(IP_KEY);
+    applyIp();
+    updateProgress();
+  }
+  updateProgress();
+</script>
+
+</body>
+</html>
