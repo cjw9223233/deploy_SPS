@@ -897,7 +897,6 @@
       <tr><td class="mono">SPSFNR</td><td>1.4.0</td><td></td></tr>
       <tr><td class="mono">SPSMMIServerReceive</td><td>1.0.7.a</td><td></td></tr>
       <tr><td class="mono">SPSWatchDog</td><td>2.0.5</td><td></td></tr>
-      <tr><td class="mono">SPS_MMI</td><td>v0.0.19</td><td></td></tr>
     </tbody>
   </table>
 </section>
@@ -909,6 +908,7 @@
 </footer>
 
 <script>
+function initManual(){
   function feedback(btn){
     const orig = btn.textContent;
     btn.textContent = '已複製!';
@@ -1120,6 +1120,15 @@
     updateProgress();
   }
   updateProgress();
+
+  // 供 HTML 內嵌 onclick 使用（解密注入後仍為全域可及）
+  window.copyCmd       = copyCmd;
+  window.jumpToNext    = jumpToNext;
+  window.resetProgress = resetProgress;
+}
+
+// 直接開啟此原始檔時照常初始化；加密版由解密成功後自行呼叫 initManual()
+if (!window.__ENCRYPTED__) initManual();
 </script>
 
 </body>
