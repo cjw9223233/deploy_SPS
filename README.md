@@ -4,6 +4,7 @@
 
 - **線上版（GitHub Pages）**：<https://cjw9223233.github.io/deploy_SPS/>（預期網址，請以 repo Settings → Pages 顯示為準）
 - **原始依據**：`車站端SPS新舊切換流程_正式用.docx`（未放在本 repo）
+- **另附：SPSMMI 建構流程與流程圖 v1.4**（PAM、EQM、閘門、CCBE、ATIM，27 項操作情境）：<https://cjw9223233.github.io/deploy_SPS/docs/SPSMMI_Construction_Workflows_v1.4.html>
 - **技術組成**：單一 HTML 檔（內嵌 CSS + 原生 JavaScript），**無後端、無建置步驟、無外部相依套件**
 
 ---
@@ -40,6 +41,7 @@ cd deploy_SPS
 | `.github/workflows/static.yml` | push 到 `master` 時自動部署到 GitHub Pages | — |
 | `src/manual.src.html` | 09/11 當時的原始檔快照，外包一層 `initManual()`，預留給「加密版」使用（加密版未實作） | 否（但仍可經由網址被存取） |
 | `docs/車站端SPS新舊切換流程_操作手冊_v1_1_09_11.html` | v1.1_09.11 的封存版本 | 否（同上） |
+| `docs/SPSMMI_Construction_Workflows_v1.4.html` | 《SPSMMI 建構流程》各模組操作情境與流程圖（獨立文件，與 index.html 無關） | 是 |
 
 > **注意**：`src/` 與 `docs/` **沒有**跟著 `index.html` 更新（例如缺少車站對照表、MMIServerCOMMSend 版本仍是舊的）。請勿以它們為基礎修改，否則會把新功能蓋掉。
 
