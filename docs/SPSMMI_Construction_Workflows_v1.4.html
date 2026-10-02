@@ -97,10 +97,11 @@ dialog .close{position:static;float:none}
   .appbar-menu{display:inline-block}
   .appbar-brand{display:none}
   .appbar-crumb{border-left:0;padding-left:0}
-  nav#toc{position:fixed;top:0;left:0;bottom:0;width:min(86vw,340px);max-height:none;z-index:70;border-radius:0;transform:translateX(-105%);visibility:hidden;transition:transform .2s,visibility .2s;box-shadow:4px 0 18px rgba(23,42,58,.2)}
+  nav#toc{position:fixed;top:0;left:0;bottom:0;align-self:stretch;height:100vh;height:100dvh;width:min(86vw,340px);max-height:none;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;z-index:70;border-radius:0;transform:translateX(-105%);visibility:hidden;transition:transform .2s,visibility .2s;box-shadow:4px 0 18px rgba(23,42,58,.2)}
   nav#toc.open{transform:none;visibility:visible}
   .nav-backdrop{position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:60}
   body.drawer-open{overflow:hidden}
+  body.drawer-open .to-top{visibility:hidden}
   nav#toc a{padding:7px 8px}
 }
 @media(max-width:700px){
