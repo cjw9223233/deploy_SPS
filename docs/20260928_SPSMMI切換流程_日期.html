@@ -242,7 +242,7 @@
 <header>
   <div class="header-top">
     <div>
-      <h1>車站端SPS新舊切換流程（正式用）<span class="ver-badge">v1.1_09.11</span></h1>
+      <h1>車站端SPS新舊切換流程（正式用）<span class="ver-badge">v1.2_09.28</span></h1>
       <div class="sub">線上遷移操作手冊 — 依「車站端SPS新舊切換流程_正式用.docx」轉錄</div>
     </div>
     <div class="progress-wrap">
@@ -433,13 +433,6 @@
 
     <div class="step">
       <label class="step-head"><input type="checkbox" class="track"><span>5. 關閉 /etc/crontab 內的 afcmcheck.sh，將那一行 # 掉</span></label>
-      <div class="step-body">
-        <div class="cmd-block">
-          <div class="cmd-row"><code>cd /home/sps/WL</code><button class="copy-btn" data-cmd="cd /home/sps/W" onclick="copyCmd(this)">複製</button></div>
-          <div class="cmd-row"><code>chmod +x old_close_crontab.sh</code><button class="copy-btn" data-cmd="chmod +x old_close_crontab.sh" onclick="copyCmd(this)">複製</button></div>
-          <div class="cmd-row"><code>./old_close_crontab.sh</code><button class="copy-btn" data-cmd="./old_close_crontab.sh" onclick="copyCmd(this)">複製</button></div>
-        </div>
-      </div>
     </div>
 
     <div class="step">
@@ -507,7 +500,8 @@
       <div class="step-body">
         <div class="cmd-block">
           <div class="cmd-row"><code>cd /home/sps</code><button class="copy-btn" data-cmd="cd /home/sps" onclick="copyCmd(this)">複製</button></div>
-          <div class="cmd-row"><code>scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
+          <!-- <div class="cmd-row"><code>scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp UD2.tar.gz sent.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div> -->
+          <div class="cmd-row"><code>scp YYYYMMDD_UD2.tar.gz YYYYMMDD_sent.tar.gz sps@172.xxx.xxx.241:/home/sps</code><button class="copy-btn" data-cmd="scp YYYYMMDD_UD2.tar.gz YYYYMMDD_sent.tar.gz sps@172.xxx.xxx.241:/home/sps" onclick="copyCmd(this)">複製</button></div>
         </div>
       </div>
     </div>
@@ -735,17 +729,6 @@
     </div>
 
     <div class="step">
-      <label class="step-head"><input type="checkbox" class="track"><span>丟新的檔案（SPSWatchDog、SPSEventAlarm）</span></label>
-      <div class="step-body">
-        <div class="note">
-          丟新的檔案：<b>SPSWatchDog</b> 及 <b>SPSEventAlarm</b>
-        </div>
-      </div>
-    </div>
-
-   
-
-    <div class="step">
       <label class="step-head"><input type="checkbox" class="track"><span>16. 重開機</span></label>
     </div>
   </section>
@@ -905,7 +888,7 @@
       <tr><td class="mono">SPSFNR</td><td>1.4.1</td><td></td></tr>
       <tr><td class="mono">SPSMMIServerReceive</td><td>1.0.7.a</td><td></td></tr>
       <tr><td class="mono">SPSWatchDog</td><td>2.0.5a</td><td></td></tr>
-      <tr><td class="mono">SPS_MMI</td><td>v0.0.20</td><td></td></tr>
+      <tr><td class="mono">SPS_MMI</td><td>v1.0.21</td><td></td></tr>
     </tbody>
   </table>
 </section>
@@ -1051,7 +1034,6 @@
     "172.8.101.240":"信義安和",
     "172.8.102.240":"R大安",
     "172.8.103.240":"大安森林公園",
-    "172.8.104.240":"廣慈/奉天宮",
     "172.9.105.240":"北門",
     "172.9.106.240":"G中山",
     "172.9.107.240":"G松江南京",
@@ -1086,7 +1068,8 @@
   const attrTargets = [];   // {el, tpl}
 
   function needsSubst(t){
-    return t.indexOf('172.xxx.xxx') >= 0 || t.indexOf('該站SPS IP') >= 0 || t.indexOf('<新SPS IP>') >= 0;
+    // return t.indexOf('172.xxx.xxx') >= 0 || t.indexOf('該站SPS IP') >= 0 || t.indexOf('<新SPS IP>') >= 0;
+      return t.indexOf('172.xxx.xxx') >= 0 || t.indexOf('該站SPS IP') >= 0 || t.indexOf('<新SPS IP>') >= 0 || t.indexOf('YYYYMMDD') >= 0;
   }
 
   (function collect(){
@@ -1101,9 +1084,15 @@
     });
   })();
 
+    function todayStr(){
+    const d = new Date();
+    return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  }
+
   function substitute(tpl, prefix){
-    if (!prefix) return tpl;
-    return tpl
+    const s = tpl.replace(/YYYYMMDD/g, todayStr());
+    if (!prefix) return s;
+    return s
       .replace(/172\.xxx\.xxx/g, prefix)
       .replace(/該站SPS IP/g, prefix + '.240')
       .replace(/<新SPS IP>/g, prefix + '.241');
