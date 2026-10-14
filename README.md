@@ -218,6 +218,7 @@ key 必須是**完整且結尾為 `.240`** 的 IP；同名站依路線加前綴�
 | 2026-09-21 | 更新 SPSEventAlarmStatusController、SPSFNR、SPSWatchDog、SPS_MMI 版本 |
 | 2026-09-23 | 新增「輸入 IP 後顯示車站名稱」（`STATION_MAP`） |
 | 2026-09-23 | 加入廣慈/奉天宮站；更新 MMIServerCOMMSend 版本 |
+| 2026-10-13 | 更新版號為10.13 |
 
 完整紀錄請看 `git log`。
 
